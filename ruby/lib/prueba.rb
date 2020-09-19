@@ -1,14 +1,16 @@
-def before_and_after_each_call(blockBefore, blockAfter)
-  if self.singleton_class.instance_variable_get(:@procsBefore).nil?
-   self.singleton_class.instance_variable_set(:@procsBefore, [])
-  end
+class Module
+  def before_and_after_each_call(blockBefore, blockAfter)
+    if self.singleton_class.instance_variable_get(:@procsBefore).nil?
+     self.singleton_class.instance_variable_set(:@procsBefore, [])
+    end
 
-  if self.singleton_class.instance_variable_get(:@procsAfter).nil?
-    self.singleton_class.instance_variable_set(:@procsAfter, [])
-  end
+    if self.singleton_class.instance_variable_get(:@procsAfter).nil?
+      self.singleton_class.instance_variable_set(:@procsAfter, [])
+    end
 
-  self.singleton_class.instance_variable_get(:@procsBefore) << blockBefore
-  self.singleton_class.instance_variable_get(:@procsAfter) << blockAfter
+    self.singleton_class.instance_variable_get(:@procsBefore) << blockBefore
+    self.singleton_class.instance_variable_get(:@procsAfter) << blockAfter
+  end
 end
 
 module AntesYDespues
