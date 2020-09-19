@@ -2,26 +2,36 @@
 require 'set'
 
 module MethodInterceptors
-  def self.included(klass)
-    klass.class_eval do
-      def self.method_added(method_name)
-        # method = self.instance_method(method_name)
-        isNotDefined = (defined? @@already_intercepted_methods).nil?
+  def llamar_before_procs
+    puts "llamar_before_procs"
+    @@before_list.each {|bloque| bloque.call}
+    @@recursing=false
+  end
 
-        if isNotDefined
-          @@already_intercepted_methods = Set[]
-        end
+  def llamar_after_procs
+    puts "llamar_after_procs"
+    @@after_list.each {|bloque| bloque.call}
+  end
 
-        if method_name != :method_added && @@already_intercepted_methods.include?(method_name)
-          define_method method_name do
-            # self.llamarBeforeProcs
-            send(method_name)
-            # method
-            # self.llamarAfterProcs
-          end
-          puts "Se agrego el metodo #{method_name}"
-          @@already_intercepted_methods << method_name
+  def method_added(method_name)
+    @@recursing= true
+    isNotDefined = (defined? @@already_intercepted_methods).nil?
+
+    if isNotDefined
+      @@already_intercepted_methods = Set[]
+    end
+
+    if method_name != :method_added && !@@already_intercepted_methods.include?(method_name)
+      puts "Se agrego el metodo #{method_name}"
+      @@already_intercepted_methods << method_name
+      # unbound_method = self.method(method_name)
+      # puts unbound_method
+      define_method method_name do
+        self.class.llamar_before_procs
+        if(@@recursing)
+          send(method_name)
         end
+        self.class.llamar_after_procs
       end
     end
   end
@@ -41,6 +51,7 @@ module MethodInterceptors
 
     @@before_list << before
     @@after_list << after
+
   end
 end
 
@@ -53,13 +64,17 @@ end
 class Cat
 
   before_and_after_each_call(proc { puts 'before' }, proc { puts 'after' })
-  def hello_world(name)
-    puts "Hello #{name}"
+  before_and_after_each_call(proc { puts 'before2' }, proc { puts 'after2' })
+  def hello_world
+    puts "Hello"
   end
+  # def hello_world_con_nombre(name)
+  #   puts "Hello #{name}"
+  # end
 end
 
 my_cat = Cat.new
-my_cat.hello_world('Paul')
+my_cat.hello_world
 # my_cat.hello_world('Paul')
 
 
