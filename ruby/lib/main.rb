@@ -11,7 +11,6 @@ module MethodInterceptors
         if isNotDefined
           @@already_intercepted_methods = Set[]
         end
-        puts @@already_intercepted_methods
 
         if method_name != :method_added && @@already_intercepted_methods.include?(method_name)
           define_method method_name do
@@ -26,13 +25,34 @@ module MethodInterceptors
       end
     end
   end
+
+  def before_and_after_each_call(before, after)
+    isNotDefined = (defined? @@before_list).nil?
+
+    if isNotDefined
+      @@before_list = []
+    end
+
+    isNotDefined = (defined? @@after_list).nil?
+
+    if isNotDefined
+      @@after_list = []
+    end
+
+    @@before_list << before
+    @@after_list << after
+  end
 end
 
-class Cat
+class Class
   include MethodInterceptors
 
-  # before_and_after_each_call(proc { puts 'before' }, proc { puts 'after' })
+end
 
+
+class Cat
+
+  before_and_after_each_call(proc { puts 'before' }, proc { puts 'after' })
   def hello_world(name)
     puts "Hello #{name}"
   end
@@ -43,18 +63,5 @@ my_cat.hello_world('Paul')
 # my_cat.hello_world('Paul')
 
 
-# def call_procs_after
-#   self.class.singleton_class.instance_variable_get(:@after_list).each(&:call)
-# end
-#
-# def call_procs_before
-#   self.class.singleton_class.instance_variable_get(:@before_list).each(&:call)
-# end
 
-# def before_and_after_each_call(before, after)
-#   singleton_class.instance_variable_set(:@before_list, []) if singleton_class.instance_variable_get(:@before_list).nil? # TODO: Can we access directly to variables?
-#   singleton_class.instance_variable_set(:@after_list, []) if singleton_class.instance_variable_get(:@after_list).nil?
-#
-#   singleton_class.instance_variable_get(:@before_list) << before
-#   singleton_class.instance_variable_get(:@after_list) << after
-# end
+
