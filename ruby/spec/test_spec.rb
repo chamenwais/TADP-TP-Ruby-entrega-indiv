@@ -1,5 +1,5 @@
 describe Prueba do
-  let(:prueba) { Prueba.new }
+  let(:prueba) { Prueba.new(1) }
 
   describe '#materia' do
     it 'debería pasar este test' do
@@ -25,6 +25,12 @@ describe Prueba do
   describe '#agregadoDespues' do
     it 'deberia ser 2020' do
       expect(prueba.agregadoDespues).to eq("anda!")
+    end
+  end
+
+  describe '#agregadoDespues2' do
+    it 'deberia andar' do
+      expect(prueba.agregadoBasntanteDespues).to eq("noVaAAndar")
     end
   end
 

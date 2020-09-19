@@ -68,8 +68,16 @@ module AntesYDespues
   end
 end
 
-class Prueba
+class Class
   include AntesYDespues
+end
+
+class Prueba
+  attr_accessor :numeroDePrueba
+
+  def initialize(numeroDePrueba=1)
+    self.numeroDePrueba=numeroDePrueba
+  end
 
   before_and_after_each_call(proc{ puts "Entre primero a un mensaje" },proc{ puts "Sali primero de un mensaje" })
   def materia
