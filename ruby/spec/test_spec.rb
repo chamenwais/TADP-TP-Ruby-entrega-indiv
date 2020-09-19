@@ -1,5 +1,5 @@
-describe Prueba do
-  let(:prueba) { Prueba.new }
+describe Main do
+  let(:prueba) { Main.new }
 
   describe '#materia' do
     it 'debería pasar este test' do
