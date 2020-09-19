@@ -5,7 +5,6 @@ module MethodInterceptors
   def llamar_before_procs
     puts "llamar_before_procs"
     @@before_list.each {|bloque| bloque.call}
-    @@recursing=false
   end
 
   def llamar_after_procs
@@ -27,11 +26,15 @@ module MethodInterceptors
       # unbound_method = self.method(method_name)
       # puts unbound_method
       define_method method_name do
-        self.class.llamar_before_procs
         if(@@recursing)
+          self.class.llamar_before_procs
+
+
+          @@recursing=false
           send(method_name)
+          self.class.llamar_after_procs
         end
-        self.class.llamar_after_procs
+
       end
     end
   end
