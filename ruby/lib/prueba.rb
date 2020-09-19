@@ -1,28 +1,73 @@
-def initializeProcsBefore
-  begin
-    self.class_variable_get(:@@procsBefore)
-  rescue
-    self.class_variable_set(:@@procsBefore, [])
-  end
-end
-
-def initializeProcsAfter
-  begin
-    self.class_variable_get(:@@procsAfter)
-  rescue
-    self.class_variable_set(:@@procsAfter, [])
-  end
-end
-
 def before_and_after_each_call(blockBefore, blockAfter)
-  initializeProcsBefore
-  initializeProcsAfter
+  if self.singleton_class.instance_variable_get(:@procsBefore).nil?
+   self.singleton_class.instance_variable_set(:@procsBefore, [])
+  end
 
-  self.class_variable_get(:@@procsBefore) << blockBefore
-  self.class_variable_get(:@@procsAfter) << blockAfter
+  if self.singleton_class.instance_variable_get(:@procsAfter).nil?
+    self.singleton_class.instance_variable_set(:@procsAfter, [])
+  end
+
+  self.singleton_class.instance_variable_get(:@procsBefore) << blockBefore
+  self.singleton_class.instance_variable_get(:@procsAfter) << blockAfter
+end
+
+module AntesYDespues
+
+  def initialize
+    self.interceptarMetodos
+    super
+  end
+
+  def callProcsAfter
+    self.class.singleton_class.instance_variable_get(:@procsAfter).each do |procAfter|
+      procAfter.call
+    end
+  end
+
+  def callProcsBefore
+    self.class.singleton_class.instance_variable_get(:@procsBefore).each do |procBefore|
+      procBefore.call
+    end
+  end
+
+  def getAuxMethodSymbol(metodo)
+    ("@@" + (metodo.to_s) + "Aux").to_sym
+  end
+
+  def notNilAndNotEmpty(parametros)
+    !parametros.nil? and !parametros.empty?
+  end
+
+  def getClassVariableOfSelfClass(metodo)
+    self.class.class_variable_get(getAuxMethodSymbol(metodo)).bind(self.class.new)
+  end
+
+  def interceptarMetodos
+    self.class.instance_methods(false).each do |metodo|
+      unbound_method = self.class.instance_method(metodo)
+      losParametros = unbound_method.parameters[0]
+      self.class.class_variable_set(getAuxMethodSymbol(metodo), unbound_method)
+      if notNilAndNotEmpty(losParametros)
+        self.define_singleton_method(metodo) { |*parametros|
+          callProcsBefore
+          retorno = getClassVariableOfSelfClass(metodo).call(*parametros)
+          callProcsAfter
+          retorno
+        }
+      else
+        self.define_singleton_method(metodo) {
+          callProcsBefore
+          retorno = getClassVariableOfSelfClass(metodo).call
+          callProcsAfter
+          retorno
+        }
+      end
+    end
+  end
 end
 
 class Prueba
+  include AntesYDespues
 
   before_and_after_each_call(proc{ puts "Entre primero a un mensaje" },proc{ puts "Sali primero de un mensaje" })
   def materia
@@ -51,47 +96,3 @@ class Prueba
   end
 end
 
-def callProcsAfter
-  Prueba.class_variable_get(:@@procsAfter).each do |procAfter|
-    procAfter.call
-  end
-end
-
-def callProcsBefore
-  Prueba.class_variable_get(:@@procsBefore).each do |procBefore|
-    procBefore.call
-  end
-end
-
-def getAuxMethodSymbol(metodo)
-  ("@@" + (metodo.to_s) + "Aux").to_sym
-end
-
-def notNilAndNotEmpty
-  !@parametros.nil? and !@parametros.empty?
-end
-
-def getClassVariableOfPrueba(metodo)
-  Prueba.class_variable_get(getAuxMethodSymbol(metodo))
-      .bind(Prueba.new)
-end
-
-Prueba.instance_methods(false).each do |metodo|
-  @parametros=Prueba.instance_method(metodo).parameters[0]
-  Prueba.class_variable_set(getAuxMethodSymbol(metodo), Prueba.instance_method(metodo))
-  if notNilAndNotEmpty
-    Prueba.send(:define_method, metodo){ |*parametros|
-      callProcsBefore
-      @retorno=getClassVariableOfPrueba(metodo).call(*parametros)
-      callProcsAfter
-      @retorno
-    }
-  else
-    Prueba.send(:define_method, metodo){
-      callProcsBefore
-      @retorno= getClassVariableOfPrueba(metodo).call
-      callProcsAfter
-      @retorno
-    }
-  end
-end
