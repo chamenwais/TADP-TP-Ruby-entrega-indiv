@@ -16,3 +16,12 @@ describe Cat do
     end
   end
 end
+
+describe Dog do
+  let(:my_dog) { Dog.new }
+  describe '#Dog' do
+    it 'deberia ladrar' do
+      expect(my_dog.say_guau).to eq("Guau!")
+    end
+  end
+end

@@ -19,6 +19,13 @@ class Cat
   end
 end
 
+class Dog
+  before_and_after_each_call(proc { puts 'Another before' }, proc { puts 'Another after' })
+  def say_guau
+    "Guau!"
+  end
+end
+
 
 
 
