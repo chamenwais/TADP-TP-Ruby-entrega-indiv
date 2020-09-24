@@ -2,11 +2,11 @@ require 'set'
 
 module MethodInterceptors
   def llamar_before_procs
-    @@before_list.each { |bloque| bloque.call }
+    self.instance_variable_get(:@before_list).each { |bloque| bloque.call }
   end
 
   def llamar_after_procs
-    @@after_list.each { |bloque| bloque.call }
+    self.instance_variable_get(:@after_list).each { |bloque| bloque.call }
   end
 
   def method_added(method_name)
@@ -58,11 +58,11 @@ module MethodInterceptors
   end
 
   def before_and_after_each_call(before, after)
-    define_before_list_if_not_defined
-    define_after_list_if_not_defined
+    define_list_if_not_defined(:@before_list)
+    define_list_if_not_defined(:@after_list)
     define_intercepted_classes
-    @@before_list << before
-    @@after_list << after
+    self.instance_variable_get(:@before_list) << before
+    self.instance_variable_get(:@after_list) << after
     @@intercepted_classes << self
   end
 
@@ -100,19 +100,11 @@ module MethodInterceptors
     "block".to_sym.eql? get_last_parameter(parametros)
   end
 
-  def define_after_list_if_not_defined
-    is_not_defined = (defined? @@after_list).nil?
+  def define_list_if_not_defined(sym_list)
+    is_not_defined = self.instance_variable_get(sym_list).nil?
 
     if is_not_defined
-      @@after_list = []
-    end
-  end
-
-  def define_before_list_if_not_defined
-    is_not_defined = (defined? @@before_list).nil?
-
-    if is_not_defined
-      @@before_list = []
+      self.instance_variable_set(sym_list,[])
     end
   end
 

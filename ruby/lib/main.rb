@@ -19,6 +19,12 @@ class Cat
   end
 end
 
+class Cat
+  def maullar_con_delay()
+    "Miau, a mi me agregaron despues"
+  end
+end
+
 class Dog
   before_and_after_each_call(proc { puts 'Another before' }, proc { puts 'Another after' })
   def say_guau

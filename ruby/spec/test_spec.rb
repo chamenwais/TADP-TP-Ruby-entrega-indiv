@@ -14,6 +14,10 @@ describe Cat do
       preguntar_como_esta = proc { puts "How are you?" }
       expect(my_cat.hello_world_con_nombre_y_bloque("Paul", preguntar_como_esta)).to eq("Done")
     end
+
+    it 'deberia decir: Miau, a mi me agregaron despues' do
+      expect(my_cat.maullar_con_delay()).to eq("Miau, a mi me agregaron despues")
+    end
   end
 end
 
