@@ -1,9 +1,9 @@
-describe Main do
-  let(:prueba) { Main.new }
+describe Cat do
+  let(:gatito) { Cat.new }
 
-  describe '#materia' do
-    it 'debería pasar este test' do
-      expect(prueba.materia).to be :tadp
+  describe '#gatito' do
+    it 'debería decir hola' do
+      gatito.hola
     end
   end
 end

@@ -10,6 +10,12 @@ class Cat
   def hello_world_con_nombre(name)
     puts "Hello #{name}"
   end
+
+  def hello_world_con_nombre_y_bloque(name, &bloque)
+    puts "Hello #{name}"
+    bloque.call
+    "Done"
+  end
 end
 
 class Pepito
@@ -28,11 +34,33 @@ class ClaseSinBeforeAndAfter
   end
 end
 
+class Estudiante
+
+  attr_accessor :anotadas, :aprobadas
+  invariant { anotadas > 3 } #Para ser alumno regular
+  invariant { aprobadas > 15 && aprobadas < 43 } #La cantidad de materias de Ing. en Sistemas
+
+  def initialize(_aprobadas,_anotadas)
+    @aprobadas = _aprobadas
+    @anotadas = _anotadas
+  end
+
+  def aprobar
+    @aprobadas = @aprobadas + 1
+    self.class.verificar_invariantes(self)
+  end
+end
+
 my_cat = Cat.new
 my_cat.hello_world
 puts "==========================="
 my_cat.hello_world_con_nombre("Paul")
 puts "==========================="
+my_cat.hello_world_con_nombre_y_bloque("Paul",proc { puts "Ejecute bloque" })
+puts "==========================="
 Pepito.new.hola
 puts "==========================="
 ClaseSinBeforeAndAfter.new.chau
+
+santi = Estudiante.new(43,4)
+# santi.aprobar
