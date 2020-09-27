@@ -29,3 +29,33 @@ describe Dog do
     end
   end
 end
+
+describe Estudiante do
+  let(:palmiro) { Estudiante.new }
+  describe '#Estudiante' do
+    it 'deberia fallar porque palmiro ya había terminado la carrera' do
+      expect {palmiro.aprobar}.to raise_error(RuntimeError)
+    end
+  end
+end
+
+describe Guerrero do
+  let(:arruinado) { Guerrero.new }
+  let(:paolo) { Guerrero.new }
+  describe '#Guerrero' do
+    it 'el arruinado no puede ni intentar atacar' do
+      arruinado.vida=-3
+      arruinado.fuerza=0
+      expect {arruinado.atacar(Guerrero.new)}.to raise_error(RuntimeError)
+    end
+
+    it 'cuando un guerrero lo arruina, ya no puede atacar' do
+      arruinado.vida=5
+      arruinado.fuerza=3
+      paolo.vida=50
+      paolo.fuerza=50
+      paolo.atacar(arruinado)
+      expect {arruinado.atacar(Guerrero.new)}.to raise_error(RuntimeError)
+    end
+  end
+end

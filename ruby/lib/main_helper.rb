@@ -1,59 +1,91 @@
 require 'set'
 
 module MethodInterceptors
-  def llamar_before_procs
-    self.instance_variable_get(:@before_list).each { |bloque| bloque.call }
+
+  def invariant(&condicion)
+    eval_condicion = proc { |instancia| raise RuntimeError unless instancia.instance_eval(&condicion) }
+    before_and_after_each_call(eval_condicion, eval_condicion)
   end
 
-  def llamar_after_procs
-    self.instance_variable_get(:@after_list).each { |bloque| bloque.call }
+  def llamar_before_procs(instancia)
+    self.instance_variable_get(:@before_list).each { |bloque| instancia.instance_exec(instancia,&bloque) }
+  end
+
+  def llamar_after_procs(instancia)
+    self.instance_variable_get(:@after_list).each { |bloque| instancia.instance_exec(instancia,&bloque) }
+  end
+
+  def diferent_of_initialize(method_name)
+    method_name != :initialize
   end
 
   def method_added(method_name)
     @@recursing = true
     define_already_intercepted_methods
     define_intercepted_classes
-    if method_name != :method_added && not_intercepted(method_name) && has_requested_before_and_after
-      @@already_intercepted_methods << method_name
+    if diferent_of_method_added(method_name) &&
+        not_intercepted(method_name) && has_requested_before_and_after
+      @already_intercepted_methods << method_name
       unbound_method = self.instance_method(method_name)
       los_parametros = unbound_method.parameters
       if not_nil_and_not_empty(los_parametros) and last_parameter_is_a_block(los_parametros)
         define_method method_name do |*parametros|
           if (@@recursing)
-            self.class.llamar_before_procs
-            @@recursing = false
-            block=parametros.delete_at(parametros.size-1)
+            if self.class.diferent_of_initialize(method_name)
+              begin
+                self.class.llamar_before_procs(self)
+              rescue RuntimeError => re
+                @@recursing=true
+                raise re
+              end
+              @@recursing = false
+            end
+            block=parametros.delete(parametros.last)
             retorno=unbound_method.bind(self).call(*parametros, &block)
-            self.class.llamar_after_procs
             @@recursing = true
+            self.class.llamar_after_procs(self)
             retorno
           end
         end
       elsif not_nil_and_not_empty(los_parametros) and !last_parameter_is_a_block(los_parametros)
         define_method method_name do |*parametros|
           if (@@recursing)
-            self.class.llamar_before_procs
-            @@recursing = false
+            if self.class.diferent_of_initialize(method_name)
+              begin
+              self.class.llamar_before_procs(self)
+              rescue RuntimeError => re
+                @@recursing=true
+                raise re
+              end
+              @@recursing = false
+            end
             retorno=unbound_method.bind(self).call(*parametros)
-            self.class.llamar_after_procs
             @@recursing = true
+            self.class.llamar_after_procs(self)
             retorno
           end
         end
       else
         define_method method_name do
           if (@@recursing)
-            self.class.llamar_before_procs
-            @@recursing = false
+            if self.class.diferent_of_initialize(method_name)
+              begin
+                self.class.llamar_before_procs(self)
+              rescue RuntimeError => re
+                @@recursing=true
+                raise re
+              end
+              @@recursing = false
+            end
             retorno=unbound_method.bind(self).call
-            self.class.llamar_after_procs
             @@recursing = true
+            self.class.llamar_after_procs(self)
             retorno
           end
         end
       end
     else
-      super
+      super(method_name)
     end
   end
 
@@ -68,19 +100,23 @@ module MethodInterceptors
 
   private
 
+  def diferent_of_method_added(method_name)
+    method_name != :method_added
+  end
+
   def get_last_parameter(parametros)
-    parametros[parametros.size - 1][0]
+    parametros.last.first
   end
 
   def not_intercepted(method_name)
-    !@@already_intercepted_methods.include?(method_name)
+    !@already_intercepted_methods.include?(method_name)
   end
 
   def define_already_intercepted_methods
-    is_not_defined = (defined? @@already_intercepted_methods).nil?
+    is_not_defined = (defined? @already_intercepted_methods).nil?
 
     if is_not_defined
-      @@already_intercepted_methods = Set[]
+      @already_intercepted_methods = Set[]
     end
   end
 

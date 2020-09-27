@@ -32,6 +32,32 @@ class Dog
   end
 end
 
+class Estudiante
+
+  attr_accessor :anotadas, :aprobadas
+  invariant { anotadas > 3 } #Para ser alumno regular
+  invariant { aprobadas > 15 && aprobadas < 43 } #La cantidad de materias de Ing. en Sistemas
+
+  def initialize
+    @aprobadas = 42
+    @anotadas = 4
+  end
+
+  def aprobar
+    @aprobadas =@aprobadas+1
+    puts "Aprobe una materia"
+  end
+end
+
+class Guerrero
+  attr_accessor :vida , :fuerza
+  invariant { vida >= 0 }
+  invariant { fuerza > 0 && fuerza < 100 }
+  def atacar(otro)
+    otro.vida -= fuerza
+    puts "la vida del otro es #{otro.vida}"
+  end
+end
 
 
 
