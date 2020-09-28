@@ -64,19 +64,21 @@ module MethodInterceptors
 
   # Chequeo de los invariantes existentes
   define_method :check_invariants do |instance|
-    puts instance
-    puts @invariantes[0]
-    if @invariantes.any? do |condicion|
-      !(instance.instance_eval &condicion)
-    end
-      raise RuntimeError
+    if @invariantes.any? { |condicion|  !(instance.instance_eval &condicion) }
+      raise "Hay un invariante que dejó de cumplirse!"
     end
   end
 
+  # Devuelve si un metodo es getter de una instancia
   def is_a_getter?(instancia,method_name)
     instancia.instance_variables.any? do |variable|
       variable.to_s[1..-1].eql? method_name.to_s
     end
+  end
+
+  # Inicializa lista de métodos interceptados
+  def initialize_intercepted_methods
+    @already_intercepted_methods = Set[] if (defined? @already_intercepted_methods).nil?
   end
 
   # Redefinicion de métodos (común a todos los puntos)
@@ -84,6 +86,7 @@ module MethodInterceptors
     @@recursing = true
     # Se inicializa lista de metodos intereceptados para una clase particular!
     initialize_intercepted_methods
+
     if method_name != :method_added && not_intercepted(method_name)
       @already_intercepted_methods << method_name
         unbound_method = self.instance_method(method_name)
@@ -97,7 +100,7 @@ module MethodInterceptors
 
               @@recursing = false
               block=parametros.delete(parametros.last)
-              unbound_method.bind(self).call(*parametros, &block)
+              retorno = unbound_method.bind(self).call(*parametros, &block)
               if self.class.has_requested_before_and_after
                 self.class.llamar_after_procs
               end
@@ -107,6 +110,7 @@ module MethodInterceptors
               if self.class.has_requested_invariant && !self.class.is_a_getter?(self,method_name)
                 self.class.check_invariants(self)
               end
+              retorno
             end
         end
         elsif has_any_parameter?(los_parametros) and !last_parameter_is_a_block(los_parametros)
@@ -116,7 +120,7 @@ module MethodInterceptors
                 self.class.llamar_before_procs
               end
               @@recursing = false
-              unbound_method.bind(self).call(*parametros)
+              retorno =unbound_method.bind(self).call(*parametros)
               if self.class.has_requested_before_and_after
                 self.class.llamar_after_procs
               end
@@ -124,6 +128,7 @@ module MethodInterceptors
               if self.class.has_requested_invariant && !self.class.is_a_getter?(self,method_name)
                 self.class.check_invariants(self)
               end
+              retorno
             end
           end
         else
@@ -134,7 +139,7 @@ module MethodInterceptors
                 self.class.llamar_before_procs
               end
               @@recursing = false
-              unbound_method.bind(self).call
+              retorno = unbound_method.bind(self).call
               if self.class.has_requested_before_and_after
                 self.class.llamar_after_procs
               end
@@ -142,6 +147,7 @@ module MethodInterceptors
               if self.class.has_requested_invariant && !self.class.is_a_getter?(self,method_name)
                 self.class.check_invariants(self)
               end
+              retorno
             end
           end
         end
@@ -152,11 +158,6 @@ module MethodInterceptors
   # Devuelve si un método ya fue interceptado y redefinido
   def not_intercepted(method_name)
     !@already_intercepted_methods.include?(method_name)
-  end
-
-  # Inicializa lista de métodos interceptados
-  def initialize_intercepted_methods
-    @already_intercepted_methods = Set[] if (defined? @already_intercepted_methods).nil?
   end
 
   # Devuelve si una lista de parámetros tiene algún valor
