@@ -5,6 +5,7 @@ class Estudiante
 
   attr_accessor :anotadas, :aprobadas
 
+  before_and_after_each_call(proc {puts "Before estudiante"}, proc { puts "After estudiante "})
   invariant { anotadas > 3 } #Para ser alumno regular
   invariant { aprobadas > 15 && aprobadas < 43 } #La cantidad de materias de Ing. en Sistemas
 
