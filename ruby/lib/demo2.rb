@@ -18,12 +18,14 @@ end
 class Estudiante
 
   attr_accessor :anotadas, :aprobadas
-  invariant { anotadas > 3 } #Para ser alumno regular
-  invariant { aprobadas > 15 && aprobadas < 43 } #La cantidad de materias de Ing. en Sistemas
+  #invariant { anotadas > 3 } #Para ser alumno regular
+  #invariant { aprobadas > 15 && aprobadas < 43 } #La cantidad de materias de Ing. en Sistemas
 
-  def initialize
-    @aprobadas = 42
-    @anotadas = 4
+  def initialize(_aprobadas, _anotadas)
+    @aprobadas = _aprobadas
+    @anotadas = _anotadas
+    puts aprobadas
+    puts anotadas
     self.class.verificar_invariantes(self)
   end
 
@@ -33,5 +35,5 @@ class Estudiante
   end
 end
 
-santi = Estudiante.new
+santi = Estudiante.new(16,30)
 santi.aprobar

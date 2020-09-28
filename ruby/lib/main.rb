@@ -1,18 +1,5 @@
 require 'set'
 
-# Logica que parece que no sirve
-#
-=begin
-
-  def initialize(*parametros)
-    if @@classes_with_invariants.include?self
-      self.class.verificar_invariantes(self)
-    end
-    puts "initialize"
-    super(*parametros)
-  end
-=end
-
 module MethodInterceptors
 
   # Lógica de los before and after (punto 1)
@@ -49,10 +36,22 @@ module MethodInterceptors
     @@classes_with_before_and_after << self
   end
 
+  # Devuelve si la propia clase tiene before and after
+  def has_requested_before_and_after
+    initialize_before_and_after_classes
+    @@classes_with_before_and_after.include?(self)
+  end
+
   # Lógica para invariantes (punto 2)
   # Inicializa lista de clases que tienen algún invariante
   def initialize_invariants_classes
     @@classes_with_invariants = Set[] if (defined? @@classes_with_invariants).nil?
+  end
+
+  # Devuelve si la propia clase tiene invariants
+  def has_requested_invariant
+    initialize_invariants_classes
+    @@classes_with_invariants.include?(self)
   end
 
   # Almacena la condición a cumplir y agrega la clase a una lista de clases que tienen invariantes
@@ -64,11 +63,20 @@ module MethodInterceptors
   end
 
   # Chequeo de los invariantes existentes
-  define_method :check_invariants do |instancia|
-    puts "Ejecutando chequeo"
-    puts instancia
-    puts @invariantes
-    raise RuntimeError if @invariantes.any? {|condicion| puts condicion !(instancia.instance_eval(&condicion)) }
+  define_method :check_invariants do |instance|
+    puts instance
+    puts @invariantes[0]
+    if @invariantes.any? do |condicion|
+      !(instance.instance_eval &condicion)
+    end
+      raise RuntimeError
+    end
+  end
+
+  def is_a_getter?(instancia,method_name)
+    instancia.instance_variables.any? do |variable|
+      variable.to_s[1..-1].eql? method_name.to_s
+    end
   end
 
   # Redefinicion de métodos (común a todos los puntos)
@@ -76,7 +84,6 @@ module MethodInterceptors
     @@recursing = true
     # Se inicializa lista de metodos intereceptados para una clase particular!
     initialize_intercepted_methods
-
     if method_name != :method_added && not_intercepted(method_name)
       @already_intercepted_methods << method_name
         unbound_method = self.instance_method(method_name)
@@ -97,7 +104,7 @@ module MethodInterceptors
 
               @@recursing = true
 
-              if self.class.has_requested_invariant
+              if self.class.has_requested_invariant && !self.class.is_a_getter?(self,method_name)
                 self.class.check_invariants(self)
               end
             end
@@ -114,7 +121,7 @@ module MethodInterceptors
                 self.class.llamar_after_procs
               end
               @@recursing = true
-              if self.class.has_requested_invariant
+              if self.class.has_requested_invariant && !self.class.is_a_getter?(self,method_name)
                 self.class.check_invariants(self)
               end
             end
@@ -132,7 +139,7 @@ module MethodInterceptors
                 self.class.llamar_after_procs
               end
               @@recursing = true
-              if self.class.has_requested_invariant
+              if self.class.has_requested_invariant && !self.class.is_a_getter?(self,method_name)
                 self.class.check_invariants(self)
               end
             end
@@ -158,16 +165,6 @@ module MethodInterceptors
   end
 
   # Lógica de obtención de parámetros
-  #
-  # Devuelve si la propia clase tiene before and after
-  def has_requested_before_and_after
-    @@classes_with_before_and_after.include?(self)
-  end
-
-  # Devuelve si la propia clase tiene invariants
-  def has_requested_invariant
-    @@classes_with_invariants.include?(self)
-  end
 
   # Devuelve si el último parámetro de una lista es un bloque
   def last_parameter_is_a_block(parametros)

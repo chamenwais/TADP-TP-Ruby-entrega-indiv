@@ -44,6 +44,8 @@ class Estudiante
   def initialize(_aprobadas,_anotadas)
     @aprobadas = _aprobadas
     @anotadas = _anotadas
+    puts anotadas
+    puts aprobadas
     puts "Se ejecuta el constructor"
   end
 
@@ -64,5 +66,15 @@ end
 #puts "==========================="
 #ClaseSinBeforeAndAfter.new.chau
 
-santi = Estudiante.new(1000,4)
+#def is_a_getter?(instancia, method_name)
+# instancia.instance_variables.any? do |variable|
+    #   puts variable.to_s[1..-1].eql? method_name
+#   variable.to_s[1..-1].eql? method_name
+# end
+#end
+
+santi = Estudiante.new(1000,2)
+
+#hola = is_a_getter?(santi, "aprobadas")
+#puts hola
 #santi.aprobar
