@@ -29,60 +29,11 @@ module MethodInterceptors
       unbound_method = self.instance_method(method_name)
       los_parametros = unbound_method.parameters
       if not_nil_and_not_empty(los_parametros) and last_parameter_is_a_block(los_parametros)
-        define_method method_name do |*parametros|
-          if (@@recursing)
-            if self.class.diferent_of_initialize(method_name)
-              begin
-                self.class.llamar_before_procs(self)
-              rescue RuntimeError => re
-                @@recursing=true
-                raise re
-              end
-              @@recursing = false
-            end
-            block=parametros.delete(parametros.last)
-            retorno=unbound_method.bind(self).call(*parametros, &block)
-            @@recursing = true
-            self.class.llamar_after_procs(self)
-            retorno
-          end
-        end
+        definir_metodo_con_parametros_y_bloque(method_name, unbound_method)
       elsif not_nil_and_not_empty(los_parametros) and !last_parameter_is_a_block(los_parametros)
-        define_method method_name do |*parametros|
-          if (@@recursing)
-            if self.class.diferent_of_initialize(method_name)
-              begin
-              self.class.llamar_before_procs(self)
-              rescue RuntimeError => re
-                @@recursing=true
-                raise re
-              end
-              @@recursing = false
-            end
-            retorno=unbound_method.bind(self).call(*parametros)
-            @@recursing = true
-            self.class.llamar_after_procs(self)
-            retorno
-          end
-        end
+        definir_metodo_con_parametros(method_name, unbound_method)
       else
-        define_method method_name do
-          if (@@recursing)
-            if self.class.diferent_of_initialize(method_name)
-              begin
-                self.class.llamar_before_procs(self)
-              rescue RuntimeError => re
-                @@recursing=true
-                raise re
-              end
-              @@recursing = false
-            end
-            retorno=unbound_method.bind(self).call
-            @@recursing = true
-            self.class.llamar_after_procs(self)
-            retorno
-          end
-        end
+        definir_metodo_sin_parametros(method_name, unbound_method)
       end
     else
       super(method_name)
@@ -99,6 +50,67 @@ module MethodInterceptors
   end
 
   private
+
+  def definir_metodo_con_parametros_y_bloque(method_name, unbound_method)
+    define_method method_name do |*parametros|
+      if (@@recursing)
+        if self.class.diferent_of_initialize(method_name)
+          begin
+            self.class.llamar_before_procs(self)
+          rescue RuntimeError => re
+            @@recursing = true
+            raise re
+          end
+          @@recursing = false
+        end
+        block = parametros.delete(parametros.last)
+        retorno = unbound_method.bind(self).call(*parametros, &block)
+        @@recursing = true
+        self.class.llamar_after_procs(self)
+        retorno
+      end
+    end
+  end
+
+  def definir_metodo_con_parametros(method_name, unbound_method)
+    define_method method_name do |*parametros|
+      if (@@recursing)
+        if self.class.diferent_of_initialize(method_name)
+          begin
+            self.class.llamar_before_procs(self)
+          rescue RuntimeError => re
+            @@recursing = true
+            raise re
+          end
+          @@recursing = false
+        end
+        retorno = unbound_method.bind(self).call(*parametros)
+        @@recursing = true
+        self.class.llamar_after_procs(self)
+        retorno
+      end
+    end
+  end
+
+  def definir_metodo_sin_parametros(method_name, unbound_method)
+    define_method method_name do
+      if (@@recursing)
+        if self.class.diferent_of_initialize(method_name)
+          begin
+            self.class.llamar_before_procs(self)
+          rescue RuntimeError => re
+            @@recursing = true
+            raise re
+          end
+          @@recursing = false
+        end
+        retorno = unbound_method.bind(self).call
+        @@recursing = true
+        self.class.llamar_after_procs(self)
+        retorno
+      end
+    end
+  end
 
   def diferent_of_method_added(method_name)
     method_name != :method_added
