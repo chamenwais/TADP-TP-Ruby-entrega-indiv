@@ -18,7 +18,29 @@ class Estudiante
     @aprobadas = @aprobadas + 1
   end
 end
+
+class Guerrero
+  attr_accessor :vida, :fuerza
+
+  invariant { vida >= 0 }
+  invariant { fuerza > 0 && fuerza < 100 }
+  def atacar(otro)
+    otro.vida -= fuerza
+  end
+end
+
+# Pruebas con Guerrero
+arruinado=Guerrero.new
+paolo=Guerrero.new
+puts paolo.class.instance_methods(false).include? :vida=
+paolo.fuerza = 0 # Se rompe porque el invariant analiza VIDA y es null.
+paolo.vida = 3 # Se rompe porque el invariant analiza FUERZA y es null.
+
+# Pruebas con Estudiante
 santi = Estudiante.new(42,4)
+santi.aprobadas = 1000
+
 puts santi.aprobadas
 puts santi.anotadas
 santi.aprobar # Acá revienta porque no cumple con los invariantes!
+

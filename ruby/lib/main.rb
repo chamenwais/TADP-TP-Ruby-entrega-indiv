@@ -64,16 +64,18 @@ module MethodInterceptors
 
   # Chequeo de los invariantes existentes
   def check_invariants(instance)
-    if @invariantes.any? { |condicion|  !(instance.instance_eval &condicion) }
+    if @invariantes.any? do |condicion|
+      !(instance.instance_eval &condicion)
+    end
       raise "Hay un invariante que dejó de cumplirse!"
     end
   end
 
   # Devuelve si un metodo es getter de una instancia
   def is_a_getter?(instancia,method_name)
-    instancia.instance_variables.any? do |variable|
-      variable.to_s[1..-1].eql? method_name.to_s
-    end
+    instancia.class.instance_methods(false).include? (method_name.to_s + "=").to_sym
+    #    instancia.class.instance_methods.any? do |metodo|
+    # metodo.to_s[1..-1].eql? method_name.to_s
   end
 
   # Inicializa lista de métodos interceptados
