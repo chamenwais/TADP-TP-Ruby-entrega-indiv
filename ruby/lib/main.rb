@@ -53,11 +53,33 @@ class Guerrero
   attr_accessor :vida , :fuerza
   invariant { vida >= 0 }
   invariant { fuerza > 0 && fuerza < 100 }
+  invariant do
+    another=Guerrero.new
+    another.vida=5
+    mi_fuerza=atacar(another)
+    mi_fuerza > 0 && mi_fuerza < 100
+  end
   def atacar(otro)
     otro.vida -= fuerza
     puts "la vida del otro es #{otro.vida}"
+    fuerza
   end
 end
+
+class Operaciones
+  #precondición de dividir
+  pre { divisor != 0 }
+  #postcondición de dividir
+  post { |result| result * divisor == dividendo }
+  def dividir(dividendo, divisor)
+    dividendo / divisor
+  end
+  # este método no se ve afectado por ninguna pre/post condición
+  def restar(minuendo, sustraendo)
+    minuendo - sustraendo
+  end
+end
+
 
 
 
