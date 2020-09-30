@@ -103,6 +103,22 @@ module MethodInterceptors
     "block".to_sym.eql? get_last_parameter(parametros)
   end
 
+  # Lógica para PRE
+  def pre(&precondicion)
+    unless @precondicion.nil?
+      raise "Ya se había definido una precondición!"
+    end
+    @precondicion = precondicion
+  end
+
+  # Lógica para POST
+  def post(&postcondicion)
+    unless @postcondicion.nil?
+      raise "Ya se había definido una postcondición!"
+    end
+    @postcondicion = postcondicion
+  end
+
   # Redefinicion de métodos (común a todos los puntos)
   def method_added(method_name)
     @@recursing = true
@@ -113,8 +129,16 @@ module MethodInterceptors
       @already_intercepted_methods << method_name
       unbound_method = self.instance_method(method_name)
 
+      precondicion = @precondicion
+      postcondicion = @postcondicion
       # Redefinicion
       define_method method_name do |*parametros|
+        # Valida precondicion
+        unless precondicion.nil? #Si no es nula, se valida
+          if !self.instance_eval &precondicion
+            raise "No se cumple la precondición para el método #{method_name.to_s}"
+          end
+        end
         self.class.call_before_procs if self.class.has_before_and_after? && !self.class.is_a_getter?(self,method_name)
         @@recursing = false
         # Se contempla el caso en el que se recibe un bloque
@@ -127,8 +151,17 @@ module MethodInterceptors
         self.class.call_after_procs if self.class.has_before_and_after? && !self.class.is_a_getter?(self,method_name)
         @@recursing = true
         self.class.check_invariants(self) if self.class.has_invariant? && !self.class.is_a_getter?(self,method_name)
+
+        # Valida postcondicion
+        unless postcondicion.nil? #Si no es nula, se valida
+          if !self.instance_eval &postcondicion
+            raise "No se cumple la postcondicion para el método #{method_name.to_s}"
+          end
+        end
         retorno
       end
+      @precondicion = nil
+      @postcondicion = nil
     end
   end
 end
