@@ -5,17 +5,17 @@ module MethodInterceptors
 
   # Inicializa lista de clases que tienen before and after
   def initialize_before_and_after_classes
-    @@classes_with_before_and_after = Set[] if (defined? @@classes_with_before_and_after).nil?
+    @@classes_with_before_and_after ||= Set[]
   end
 
   # Inicializa lista de procs before
   def initialize_before_list
-    @before_list = [] if (defined? @before_list).nil?
+    @before_list ||= []
   end
 
   # Inicializa lista de procs after
   def initialize_after_list
-    @after_list = [] if (defined? @after_list).nil?
+    @after_list ||= []
   end
 
   # Invocacion de los procs de tipo BEFORE
@@ -46,7 +46,7 @@ module MethodInterceptors
 
   # Inicializa lista de clases que tienen algún invariante
   def initialize_invariants_classes
-    @@classes_with_invariants = Set[] if (defined? @@classes_with_invariants).nil?
+    @@classes_with_invariants ||= Set[]
   end
 
   # Devuelve si la propia clase tiene invariants
@@ -57,7 +57,7 @@ module MethodInterceptors
 
   # Almacena la condición a cumplir y agrega la clase a una lista de clases que tienen invariantes
   def invariant(&condicion)
-    @invariantes = [] if @invariantes.nil?
+    @invariantes ||= []
     @invariantes << condicion
     initialize_invariants_classes
     @@classes_with_invariants << self
@@ -75,13 +75,11 @@ module MethodInterceptors
   # Devuelve si un metodo es getter de una instancia
   def is_a_getter?(instancia,method_name)
     instancia.class.instance_methods(false).include? (method_name.to_s + "=").to_sym
-    #    instancia.class.instance_methods.any? do |metodo|
-    # metodo.to_s[1..-1].eql? method_name.to_s
   end
 
   # Inicializa lista de métodos interceptados
   def initialize_intercepted_methods
-    @already_intercepted_methods = Set[] if (defined? @already_intercepted_methods).nil?
+    @already_intercepted_methods ||= Set[]
   end
 
   # Devuelve si un método ya fue interceptado y redefinido
