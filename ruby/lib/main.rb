@@ -2,6 +2,7 @@ require 'set'
 
 module MethodInterceptors
 
+
   # Inicializa lista de clases que tienen before and after
   def initialize_before_and_after_classes
     @@classes_with_before_and_after = Set[] if (defined? @@classes_with_before_and_after).nil?
@@ -119,45 +120,74 @@ module MethodInterceptors
     @postcondicion = postcondicion
   end
 
+  # Arma un hash con los parámetros enviados en un método (para aplicar en los pre y post)
+  def get_params_dictionary(valores, parametros)
+    params = {}
+    parametros.each_with_index do |parametro, index|
+      params[parametro[1].to_s] = valores[index]
+    end
+    params
+  end
+
+  # Redefine el method_missing de la instancia particular! (Singleton Class)
+  def define_method_missing_for_instance(instancia)
+    if @method_missing_defined.nil?
+      class << instancia
+        def method_missing(method, *args)
+          parametros = self.singleton_class.instance_variable_get(:@method_params)
+          parametros[method.to_s]
+        end
+      end
+      @method_missing_defined = nil
+    end
+  end
+
   # Redefinicion de métodos (común a todos los puntos)
   def method_added(method_name)
     @@recursing = true
     # Se inicializa lista de metodos intereceptados para una clase particular!
     initialize_intercepted_methods
-
-    if method_name != :method_added && not_intercepted(method_name)
+    if method_name != :method_added && method_name && not_intercepted(method_name)
+      # Se guarda el metodo como ya interceptado
       @already_intercepted_methods << method_name
       unbound_method = self.instance_method(method_name)
 
+      # Se obtienen la precondicion y postcondicion de turno
       precondicion = @precondicion
       postcondicion = @postcondicion
-      # Redefinicion
+
+      # Redefinicion del método
       define_method method_name do |*parametros|
-        # Valida precondicion
-        unless precondicion.nil? #Si no es nula, se valida
-          if !self.instance_eval &precondicion
-            raise "No se cumple la precondición para el método #{method_name.to_s}"
-          end
-        end
+        # Se redefine el method missing de esa instancia (para pre y post)
+        self.class.define_method_missing_for_instance(self)
+        key_values = self.class.get_params_dictionary(parametros, unbound_method.parameters)
+        self.singleton_class.instance_variable_set(:@method_params, key_values)
+
+        # Validación de precondición si existe
+        raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !self.instance_exec(key_values, &precondicion)
+
+        # Ejecución de procs de before si existen
         self.class.call_before_procs if self.class.has_before_and_after? && !self.class.is_a_getter?(self,method_name)
         @@recursing = false
-        # Se contempla el caso en el que se recibe un bloque
+
+        # Ejecución de código original, previo a redefinición
         if self.class.has_any_parameter?(unbound_method.parameters) && self.class.last_parameter_is_a_block(unbound_method.parameters)
           block=parametros.delete(parametros.last)
           retorno = unbound_method.bind(self).call(*parametros, &block)
         else
           retorno = unbound_method.bind(self).call(*parametros)
         end
+
+        # Ejecución de procs de after si existen
         self.class.call_after_procs if self.class.has_before_and_after? && !self.class.is_a_getter?(self,method_name)
         @@recursing = true
+
+        # Validación de invariantes si es que existen
         self.class.check_invariants(self) if self.class.has_invariant? && !self.class.is_a_getter?(self,method_name)
 
-        # Valida postcondicion
-        unless postcondicion.nil? #Si no es nula, se valida
-          if !self.instance_eval &postcondicion
-            raise "No se cumple la postcondicion para el método #{method_name.to_s}"
-          end
-        end
+        # Validación de postcondición si existe
+        raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(self.instance_exec retorno, key_values, &postcondicion)
+
         retorno
       end
       @precondicion = nil
@@ -169,3 +199,4 @@ end
 class Class
   include MethodInterceptors
 end
+

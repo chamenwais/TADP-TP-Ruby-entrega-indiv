@@ -74,7 +74,7 @@ rescue RuntimeError => re
   puts re
 end
 
-# Prueba metodo push (Se rompe la post condicion al superar la capacidad)
+# Prueba metodo push (Se rompe la precondicion porque ya está llena la pila)
 begin
   stack = Pila.new(2)
   stack.push("hola")
