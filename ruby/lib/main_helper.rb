@@ -4,10 +4,12 @@ module MethodInterceptors
 
   def pre(&condicion)
     self.instance_variable_set(:@precondicion,condicion)
+    @@intercepted_classes << self
   end
 
   def post(&condicion)
     self.instance_variable_set(:@postcondicion,condicion)
+    @@intercepted_classes << self
   end
 
   def invariant(&condicion)
@@ -32,11 +34,13 @@ module MethodInterceptors
   end
 
   def llamar_before_procs(instancia)
-    self.instance_variable_get(:@before_list).each { |bloque| instancia.instance_exec(instancia,&bloque) }
+    self.instance_variable_get(:@before_list).each { |bloque| instancia.instance_exec(instancia,&bloque) } unless
+        self.instance_variable_get(:@before_list).nil?
   end
 
   def llamar_after_procs(instancia)
-    self.instance_variable_get(:@after_list).each { |bloque| instancia.instance_exec(instancia,&bloque) }
+    self.instance_variable_get(:@after_list).each { |bloque| instancia.instance_exec(instancia,&bloque) } unless
+        self.instance_variable_get(:@after_list).nil?
   end
 
   def diferent_of_initialize(method_name)
@@ -53,7 +57,6 @@ module MethodInterceptors
   end
 
   def method_added(method_name)
-    @@recursing = true
     @@invariant ||= false
     define_already_intercepted_methods
     define_intercepted_classes
@@ -62,46 +65,71 @@ module MethodInterceptors
       @already_intercepted_methods << method_name
       unbound_method = self.instance_method(method_name)
       los_parametros = unbound_method.parameters
-      define_method_with_parameters(method_name, unbound_method)
+      define_method_with_parameters(method_name, unbound_method, @precondicion, @postcondicion)
+      @precondicion=nil
+      @postcondicion=nil
     else
       super(method_name)
     end
   end
 
+  def execute_precondition(instancia, *args, args_symbols, method_name, precondicion)
+    if precondicion.nil?
+      return
+    end
+    definir_getters_parametros(*args, args_symbols, instancia)
+    resultado_condicion=instancia.instance_exec(&precondicion)
+    if (!resultado_condicion)
+      raise "la precondicion de #{method_name} no se cumplio"
+    end
+  end
+
+  def execute_postcondition(instancia, *args, args_symbols, method_name, resultado, postcondicion)
+    if postcondicion.nil?
+      return
+    end
+    definir_getters_parametros(*args, args_symbols, instancia)
+    resultado_condicion=instancia.instance_exec(resultado,&postcondicion)
+    if (!resultado_condicion)
+      raise "la postcondicion de #{method_name} no se cumplio"
+    end
+  end
+
   private
 
-  def define_method_with_parameters(method_name, unbound_method)
-    define_method method_name do |*parametros|
-      if (@@recursing)
-        if self.class.diferent_of_initialize(method_name) and !@@invariant
-          begin
-            self.class.llamar_before_procs(self)
-          rescue RuntimeError => re
-            @@recursing = true
-            raise re
-          end
-          @@recursing = false
-          @@invariant = false
-        end
-        #TODO habría que agarrar la precondicion y si existe, ejecutarla
-        if self.class.has_any_parameter?(unbound_method.parameters) &&
-            self.class.last_parameter_is_a_block(unbound_method.parameters)
-          block = parametros.delete(parametros.last)
-          retorno = unbound_method.bind(self).call(*parametros, &block)
-        elsif
-          retorno = unbound_method.bind(self).call(*parametros)
-        end
-        #TODO habría que agarrar la postcondicion y si existe, ejecutarla con el retorno
-        @@recursing = true
-        begin
-          self.class.llamar_after_procs(self) unless @@invariant
-        rescue RuntimeError => re
-          @@invariant = false
-          raise re
-        end
-        @@invariant = false
-        retorno
+  def definir_getters_parametros(*args, args_symbols, instancia)
+    args.each_with_index do |arg, index|
+      nombre_param = args_symbols[index].last
+      instancia.define_singleton_method nombre_param do
+        arg
       end
+    end
+  end
+
+  def define_method_with_parameters(method_name, unbound_method, precondicion, postcondicion)
+    define_method method_name do |*parametros|
+      if self.class.diferent_of_initialize(method_name) and !@@invariant
+        self.class.llamar_before_procs(self)
+        @@invariant = false
+      end
+      if self.class.has_any_parameter?(unbound_method.parameters) &&
+          self.class.last_parameter_is_a_block(unbound_method.parameters)
+        block = parametros.delete(parametros.last)
+        self.class.execute_precondition(self, *parametros, unbound_method.parameters, method_name, precondicion)
+        retorno = unbound_method.bind(self).call(*parametros, &block)
+      else
+        self.class.execute_precondition(self, *parametros, unbound_method.parameters, method_name, precondicion)
+        retorno = unbound_method.bind(self).call(*parametros)
+      end
+      self.class.execute_postcondition(self, *parametros, unbound_method.parameters, method_name, retorno, postcondicion)
+      begin
+        self.class.llamar_after_procs(self) unless @@invariant
+      rescue RuntimeError => re
+        @@invariant = false
+        raise re
+      end
+      @@invariant = false
+      retorno
     end
   end
 
