@@ -144,10 +144,9 @@ module MethodInterceptors
 
   # Redefinicion de métodos (común a todos los puntos)
   def method_added(method_name)
-    @@recursing = true
     # Se inicializa lista de metodos intereceptados para una clase particular!
     initialize_intercepted_methods
-    if method_name != :method_added && method_name && not_intercepted(method_name)
+    if method_name != :method_added && not_intercepted(method_name)
       # Se guarda el metodo como ya interceptado
       @already_intercepted_methods << method_name
       unbound_method = self.instance_method(method_name)
@@ -168,7 +167,6 @@ module MethodInterceptors
 
         # Ejecución de procs de before si existen
         self.class.call_before_procs if self.class.has_before_and_after? && !self.class.is_a_getter?(self,method_name)
-        @@recursing = false
 
         # Ejecución de código original, previo a redefinición
         if self.class.has_any_parameter?(unbound_method.parameters) && self.class.last_parameter_is_a_block(unbound_method.parameters)
@@ -180,7 +178,6 @@ module MethodInterceptors
 
         # Ejecución de procs de after si existen
         self.class.call_after_procs if self.class.has_before_and_after? && !self.class.is_a_getter?(self,method_name)
-        @@recursing = true
 
         # Validación de invariantes si es que existen
         self.class.check_invariants(self) if self.class.has_invariant? && !self.class.is_a_getter?(self,method_name)
