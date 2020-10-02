@@ -1,4 +1,4 @@
-require '../lib/main'
+require '../../../ruby/lib/implementaciones/framework'
 
 # Pruebas de invariantes
 class Estudiante

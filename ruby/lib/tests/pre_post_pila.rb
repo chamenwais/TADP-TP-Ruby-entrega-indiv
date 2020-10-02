@@ -1,4 +1,4 @@
-require '../lib/main'
+require '../../../ruby/lib/implementaciones/framework'
 
 class Pila
   attr_accessor :current_node, :capacity

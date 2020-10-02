@@ -1,4 +1,4 @@
-require '../lib/main'
+require '../../../ruby/lib/implementaciones/framework'
 
 class Operaciones
   #precondición de dividir
