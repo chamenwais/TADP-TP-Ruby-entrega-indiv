@@ -2,22 +2,6 @@ require 'set'
 
 module MethodInterceptors
 
-
-  # Inicializa lista de clases que tienen before and after
-  def initialize_before_and_after_classes
-    @@classes_with_before_and_after ||= Set[]
-  end
-
-  # Inicializa lista de procs before
-  def initialize_before_list
-    @before_list ||= []
-  end
-
-  # Inicializa lista de procs after
-  def initialize_after_list
-    @after_list ||= []
-  end
-
   # Invocacion de los procs de tipo BEFORE
   def call_before_procs
     @before_list.each { |bloque| bloque.call }
@@ -30,44 +14,23 @@ module MethodInterceptors
 
   # Inicializacion de listas de before and after
   def before_and_after_each_call(before, after)
-    initialize_before_list
-    initialize_after_list
-    initialize_before_and_after_classes
+    @before_list ||= []
+    @after_list ||= []
     @before_list << before
     @after_list << after
-    @@classes_with_before_and_after << self
-  end
-
-  # Devuelve si la propia clase tiene before and after
-  def has_before_and_after?
-    initialize_before_and_after_classes
-    @@classes_with_before_and_after.include?(self)
-  end
-
-  # Inicializa lista de clases que tienen algún invariante
-  def initialize_invariants_classes
-    @@classes_with_invariants ||= Set[]
-  end
-
-  # Devuelve si la propia clase tiene invariants
-  def has_invariant?
-    initialize_invariants_classes
-    @@classes_with_invariants.include?(self)
+    @has_before_and_after = true
   end
 
   # Almacena la condición a cumplir y agrega la clase a una lista de clases que tienen invariantes
   def invariant(&condicion)
     @invariantes ||= []
     @invariantes << condicion
-    initialize_invariants_classes
-    @@classes_with_invariants << self
+    @has_invariant = true
   end
 
   # Chequeo de los invariantes existentes
   def check_invariants(instance)
-    if @invariantes.any? do |condicion|
-      !(instance.instance_eval &condicion)
-    end
+    if @invariantes.any? { |condicion| !(instance.instance_eval &condicion) }
       raise "Hay un invariante que dejó de cumplirse!"
     end
   end
@@ -164,7 +127,7 @@ module MethodInterceptors
         raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !self.instance_exec(key_values, &precondicion)
 
         # Ejecución de procs de before si existen
-        self.class.call_before_procs if self.class.has_before_and_after? && !self.class.is_a_getter?(self,method_name)
+        self.class.call_before_procs if !self.class.instance_variable_get(:@has_before_and_after).nil? && !self.class.is_a_getter?(self,method_name)
 
         # Ejecución de código original, previo a redefinición
         if self.class.has_any_parameter?(unbound_method.parameters) && self.class.last_parameter_is_a_block(unbound_method.parameters)
@@ -175,10 +138,10 @@ module MethodInterceptors
         end
 
         # Ejecución de procs de after si existen
-        self.class.call_after_procs if self.class.has_before_and_after? && !self.class.is_a_getter?(self,method_name)
+        self.class.call_after_procs if !self.class.instance_variable_get(:@has_before_and_after).nil? && !self.class.is_a_getter?(self,method_name)
 
         # Validación de invariantes si es que existen
-        self.class.check_invariants(self) if self.class.has_invariant? && !self.class.is_a_getter?(self,method_name)
+        self.class.check_invariants(self) if !self.class.instance_variable_get(:@has_invariant).nil? && !self.class.is_a_getter?(self,method_name)
 
         # Validación de postcondición si existe
         raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(self.instance_exec retorno, key_values, &postcondicion)
