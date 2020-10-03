@@ -54,20 +54,6 @@ module MethodInterceptorMixin
     !@already_intercepted_methods.include?(method_name)
   end
 
-  # Devuelve si una lista de parámetros tiene algún valor
-  def has_any_parameter?(parametros)
-    !parametros.nil? and !parametros.empty?
-  end
-
-  # Devuelve el último parametro
-  def get_last_parameter(parametros)
-    parametros.last.first
-  end
-
-  # Devuelve si el último parámetro de una lista es un bloque
-  def last_parameter_is_a_block(parametros)
-    "block".to_sym.eql? get_last_parameter(parametros)
-  end
   # Redefinicion de métodos (común a todos los puntos)
   def method_added(method_name)
     # Se inicializa lista de metodos intereceptados para una clase particular!
@@ -85,7 +71,7 @@ module MethodInterceptorMixin
       postcondicion = @postcondicion
 
       # Redefinicion del método
-      define_method method_name do |*parametros|
+      define_method method_name do |*parametros,&bloque|
 
         copia = self.class.copiar(self, unbound_method.parameters, parametros)
 
@@ -96,9 +82,8 @@ module MethodInterceptorMixin
         self.class.call_before_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
 
         # Ejecución de código original, previo a redefinición
-        if self.class.has_any_parameter?(unbound_method.parameters) && self.class.last_parameter_is_a_block(unbound_method.parameters)
-          block=parametros.delete(parametros.last)
-          retorno = unbound_method.bind(self).call(*parametros, &block)
+        if !bloque.nil?
+          retorno = unbound_method.bind(self).call(*parametros, &bloque)
         else
           retorno = unbound_method.bind(self).call(*parametros)
         end
