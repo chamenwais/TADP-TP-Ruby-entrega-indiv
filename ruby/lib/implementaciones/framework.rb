@@ -36,8 +36,13 @@ module MethodInterceptors
   end
 
   # Devuelve si un metodo es getter de una instancia
-  def is_a_getter?(instancia,method_name)
+  def is_a_getter?(instancia, method_name)
     instancia.class.instance_methods(false).include? (method_name.to_s + "=").to_sym
+  end
+
+  # Devuelve si un metodo es setter de una instancia
+  def is_a_setter?(method_name)
+    method_name.to_s[method_name.to_s.length-1].eql? "="
   end
 
   # Inicializa lista de métodos interceptados
@@ -83,28 +88,7 @@ module MethodInterceptors
     @has_pre_or_postcondition ||= true
   end
 
-  # Arma un hash con los parámetros enviados en un método (para aplicar en los pre y post)
-  def get_params_dictionary(valores, parametros)
-    params = {}
-    parametros.each_with_index do |parametro, index|
-      params[parametro[1].to_s] = valores[index]
-    end
-    params
-  end
-
-  # Redefine el method_missing de la instancia particular! (Singleton Class)
-  def define_method_missing_for_instance(instancia)
-    if @method_missing_defined.nil?
-      class << instancia
-        def method_missing(method, *args)
-          parametros = self.singleton_class.instance_variable_get(:@method_params)
-          parametros[method.to_s]
-        end
-      end
-      @method_missing_defined = nil
-    end
-  end
-
+  # Define
   def definir_getters_parametros(*args, args_symbols, instancia)
     args.each_with_index do |arg, index|
       nombre_param = args_symbols[index].last
@@ -113,14 +97,16 @@ module MethodInterceptors
       end
     end
   end
-
+  
+  # Crea una copia de un objeto y le agrega getters que se corresponden con parámetros de métodos
   def copiar(instance, method_parameters, parametros)
-    copy = instance.class.send(:new,*instance.instance_variable_get(:@params_initialize))
+    # Creación de la instancia
+    copy = instance.class.send(:new, *instance.instance_variable_get(:@params_initialize))
 
     # Seteo de estado
     instance.instance_variables.each do |sym_atributo|
       valor_atributo=instance.instance_variable_get(sym_atributo)
-      copy.instance_variable_set(sym_atributo,valor_atributo)
+      copy.instance_variable_set(sym_atributo, valor_atributo)
     end
     # Agregado de getters con los parámetros del método
     definir_getters_parametros(*parametros, method_parameters, copy)
@@ -134,7 +120,7 @@ module MethodInterceptors
 
     if method_name != :method_added && not_intercepted(method_name) && (!self.instance_variable_get(:@has_before_and_after).nil? or
         !self.instance_variable_get(:@has_invariant).nil? or
-        !self.instance_variable_get(:@has_pre_or_postcondition).nil?)
+        !self.instance_variable_get(:@has_pre_or_postcondition).nil? or is_a_setter?(method_name))
       # Se guarda el metodo como ya interceptado
       @already_intercepted_methods << method_name
       @@recursing_initialize ||=false
@@ -151,14 +137,14 @@ module MethodInterceptors
           self.instance_variable_set(:@params_initialize , parametros)
           @@recursing_initialize ||=true
         else
-          copia = self.class.copiar(self,unbound_method.parameters,parametros)
+          copia = self.class.copiar(self, unbound_method.parameters, parametros)
         end
 
         # Validación de precondición si existe
         raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !copia.instance_eval(&precondicion)
 
         # Ejecución de procs de before si existen
-        self.class.call_before_procs if !self.class.instance_variable_get(:@has_before_and_after).nil? && !self.class.is_a_getter?(self,method_name)
+        self.class.call_before_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
 
         # Ejecución de código original, previo a redefinición
         if self.class.has_any_parameter?(unbound_method.parameters) && self.class.last_parameter_is_a_block(unbound_method.parameters)
@@ -169,13 +155,13 @@ module MethodInterceptors
         end
 
         # Ejecución de procs de after si existen
-        self.class.call_after_procs if !self.class.instance_variable_get(:@has_before_and_after).nil? && !self.class.is_a_getter?(self,method_name)
+        self.class.call_after_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
 
         # Validación de invariantes si es que existen
-        self.class.check_invariants(self) if !self.class.instance_variable_get(:@has_invariant).nil? && !self.class.is_a_getter?(self,method_name)
+        self.class.check_invariants(self) if !self.class.instance_variable_get(:@has_invariant).nil?
 
         if (!@@recursing_initialize)
-          copia = self.class.copiar(self, unbound_method.parameters,parametros)
+          copia = self.class.copiar(self, unbound_method.parameters, parametros)
           # Validación de postcondición si existe
           raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(copia.instance_exec retorno, &postcondicion)
         else
