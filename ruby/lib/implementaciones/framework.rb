@@ -78,7 +78,6 @@ module MethodInterceptorMixin
         !self.instance_variable_get(:@has_pre_or_postcondition).nil? or is_a_setter?(method_name))
       # Se guarda el metodo como ya interceptado
       @already_intercepted_methods << method_name
-      @@recursing_initialize ||=false
       unbound_method = self.instance_method(method_name)
 
       # Se obtienen la precondicion y postcondicion de turno
@@ -88,12 +87,7 @@ module MethodInterceptorMixin
       # Redefinicion del método
       define_method method_name do |*parametros|
 
-        if method_name == :initialize
-          self.singleton_class.instance_variable_set(:@params_initialize , parametros)
-          @@recursing_initialize ||=true
-        else
-          copia = self.class.copiar(self, unbound_method.parameters, parametros)
-        end
+        copia = self.class.copiar(self, unbound_method.parameters, parametros)
 
         # Validación de precondición si existe
         raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !copia.instance_eval(&precondicion)
@@ -115,13 +109,9 @@ module MethodInterceptorMixin
         # Validación de invariantes si es que existen
         self.class.check_invariants(self) if !self.class.instance_variable_get(:@has_invariant).nil?
 
-        if (!@@recursing_initialize)
-          copia = self.class.copiar(self, unbound_method.parameters, parametros)
-          # Validación de postcondición si existe
-          raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(copia.instance_exec retorno, &postcondicion)
-        else
-          @@recursing_initialize ||=false
-        end
+        copia = self.class.copiar(self, unbound_method.parameters, parametros)
+        # Validación de postcondición si existe
+        raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(copia.instance_exec retorno, &postcondicion)
 
         retorno
       end
@@ -168,13 +158,7 @@ module CloneFactoryMixin
   # Crea una copia de un objeto y le agrega getters que se corresponden con parámetros de métodos
   def copiar(instance, method_parameters, parametros)
     # Creación de la instancia
-    copy = instance.class.send(:new, *instance.singleton_class.instance_variable_get(:@params_initialize))
-
-    # Seteo de estado
-    instance.instance_variables.each do |sym_atributo|
-      valor_atributo=instance.instance_variable_get(sym_atributo)
-      copy.instance_variable_set(sym_atributo, valor_atributo)
-    end
+    copy = instance.clone
     # Agregado de getters con los parámetros del método
     definir_getters_parametros(*parametros, method_parameters, copy)
     copy
