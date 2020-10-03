@@ -1,91 +1,4 @@
-require 'set'
-
-module MethodInterceptors
-  def llamar_before_procs
-    @@before_list.each { |bloque| bloque.call }
-  end
-
-  def llamar_after_procs
-    @@after_list.each { |bloque| bloque.call }
-  end
-
-  def method_added(method_name)
-    @@recursing = true
-    define_aleady_intercepted_methods
-    if method_name != :method_added && not_intercepted(method_name)
-      @@already_intercepted_methods << method_name
-      unbound_method = self.instance_method(method_name)
-      los_parametros = unbound_method.parameters[0]
-      if not_nil_and_not_empty(los_parametros)
-        define_method method_name do |*parametros|
-          if (@@recursing)
-            self.class.llamar_before_procs
-            @@recursing = false
-            unbound_method.bind(self).call(*parametros)
-            self.class.llamar_after_procs
-            @@recursing = true
-          end
-        end
-      else
-        define_method method_name do
-          if (@@recursing)
-            self.class.llamar_before_procs
-            @@recursing = false
-            unbound_method.bind(self).call
-            self.class.llamar_after_procs
-            @@recursing = true
-          end
-        end
-      end
-    end
-  end
-
-  def before_and_after_each_call(before, after)
-    define_before_list_if_not_defined
-    define_after_list_if_not_defined
-
-    @@before_list << before
-    @@after_list << after
-  end
-
-  private
-
-  def not_intercepted(method_name)
-    !@@already_intercepted_methods.include?(method_name)
-  end
-
-  def define_aleady_intercepted_methods
-    isNotDefined = (defined? @@already_intercepted_methods).nil?
-
-    if isNotDefined
-      @@already_intercepted_methods = Set[]
-    end
-  end
-
-  def not_nil_and_not_empty(parametros)
-    !parametros.nil? and !parametros.empty?
-  end
-
-  def define_after_list_if_not_defined
-    isNotDefined = (defined? @@after_list).nil?
-
-    if isNotDefined
-      @@after_list = []
-    end
-  end
-
-  def define_before_list_if_not_defined
-    isNotDefined = (defined? @@before_list).nil?
-
-    if isNotDefined
-      @@before_list = []
-    end
-  end
-end
-
-class Class
-  include MethodInterceptors
-end
+require_relative 'implementaciones/framework'
 
 class Cat
   before_and_after_each_call(proc { puts 'before' }, proc { puts 'after' })
@@ -98,12 +11,107 @@ class Cat
   def hello_world_con_nombre(name)
     puts "Hello #{name}"
   end
+
+  def hello_world_con_nombre_y_bloque(name, &bloque)
+    puts "Hello #{name}"
+    bloque.call
+    "Done"
+  end
 end
 
-my_cat = Cat.new
-my_cat.hello_world
-my_cat.hello_world_con_nombre("Paul")
+class Cat
+  def maullar_con_delay()
+    "Miau, a mi me agregaron despues"
+  end
+end
 
+class Dog
+  before_and_after_each_call(proc { puts 'Another before' }, proc { puts 'Another after' })
+  def say_guau
+    "Guau!"
+  end
+end
+
+class Estudiante
+
+  attr_accessor :anotadas, :aprobadas
+
+  invariant { anotadas > 3 } #Para ser alumno regular
+  invariant { aprobadas > 15 && aprobadas < 43 } #La cantidad de materias de Ing. en Sistemas
+
+  def initialize(_aprobadas,_anotadas)
+    @aprobadas = _aprobadas
+    @anotadas = _anotadas
+  end
+
+  def aprobar
+    @aprobadas = @aprobadas + 1
+  end
+end
+
+class Guerrero
+  attr_accessor :vida , :fuerza
+  invariant { vida >= 0 }
+  invariant { fuerza > 0 && fuerza < 100 }
+  def atacar(otro)
+    otro.vida -= fuerza
+    puts "la vida del otro es #{otro.vida}"
+    fuerza
+  end
+end
+
+class Operaciones
+  #precondición de dividir
+  pre { divisor != 0 }
+  #postcondición de dividir
+  post { |result| result * divisor == dividendo }
+  def dividir(dividendo, divisor)
+    dividendo / divisor
+  end
+  # este método no se ve afectado por ninguna pre/post condición
+  def restar(minuendo, sustraendo)
+    minuendo - sustraendo
+  end
+end
+
+class Pila
+  attr_accessor :current_node, :capacity
+  invariant { capacity >= 0 }
+  post { empty? }
+  def initialize(capacity)
+    @capacity = capacity
+    @current_node = nil
+  end
+  pre { !full? }
+  post { height > 0 }
+  def push(element)
+    @current_node = Node.new(element, current_node)
+  end
+  pre { !empty? }
+  def pop
+    element = top
+    @current_node = @current_node.next_node
+    element
+  end
+  pre { !empty? }
+  def top
+    current_node.element
+  end
+  def height
+    empty? ? 0 : current_node.size
+  end
+  def empty?
+    current_node.nil?
+  end
+  def full?
+    height == capacity
+  end
+  Node = Struct.new(:element, :next_node) do
+    def size
+      next_node.nil? ? 1 : 1 + next_node.size
+    end
+  end
+end
 
 
 
