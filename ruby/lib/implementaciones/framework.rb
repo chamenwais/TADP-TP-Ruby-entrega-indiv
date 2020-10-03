@@ -1,7 +1,6 @@
 require 'set'
 
-module MethodInterceptors
-
+module BeforeAndAfterMixin
   # Invocacion de los procs de tipo BEFORE
   def call_before_procs
     @before_list.each { |bloque| bloque.call }
@@ -20,7 +19,9 @@ module MethodInterceptors
     @after_list << after
     @has_before_and_after ||= true
   end
+end
 
+module InvariantsMixin
   # Almacena la condición a cumplir y agrega la clase a una lista de clases que tienen invariantes
   def invariant(&condicion)
     @invariantes ||= []
@@ -34,11 +35,9 @@ module MethodInterceptors
       raise "Hay un invariante que dejó de cumplirse!"
     end
   end
+end
 
-  # Devuelve si un metodo es getter de una instancia
-  def is_a_getter?(instancia, method_name)
-    instancia.class.instance_methods(false).include? (method_name.to_s + "=").to_sym
-  end
+module MethodInterceptorMixin
 
   # Devuelve si un metodo es setter de una instancia
   def is_a_setter?(method_name)
@@ -69,50 +68,6 @@ module MethodInterceptors
   def last_parameter_is_a_block(parametros)
     "block".to_sym.eql? get_last_parameter(parametros)
   end
-
-  # Lógica para PRE
-  def pre(&precondicion)
-    unless @precondicion.nil?
-      raise "Ya se había definido una precondición!"
-    end
-    @precondicion = precondicion
-    @has_pre_or_postcondition ||= true
-  end
-
-  # Lógica para POST
-  def post(&postcondicion)
-    unless @postcondicion.nil?
-      raise "Ya se había definido una postcondición!"
-    end
-    @postcondicion = postcondicion
-    @has_pre_or_postcondition ||= true
-  end
-
-  # Define
-  def definir_getters_parametros(*args, args_symbols, instancia)
-    args.each_with_index do |arg, index|
-      nombre_param = args_symbols[index].last
-      instancia.define_singleton_method nombre_param do
-        arg
-      end
-    end
-  end
-  
-  # Crea una copia de un objeto y le agrega getters que se corresponden con parámetros de métodos
-  def copiar(instance, method_parameters, parametros)
-    # Creación de la instancia
-    copy = instance.class.send(:new, *instance.instance_variable_get(:@params_initialize))
-
-    # Seteo de estado
-    instance.instance_variables.each do |sym_atributo|
-      valor_atributo=instance.instance_variable_get(sym_atributo)
-      copy.instance_variable_set(sym_atributo, valor_atributo)
-    end
-    # Agregado de getters con los parámetros del método
-    definir_getters_parametros(*parametros, method_parameters, copy)
-    copy
-  end
-
   # Redefinicion de métodos (común a todos los puntos)
   def method_added(method_name)
     # Se inicializa lista de metodos intereceptados para una clase particular!
@@ -178,7 +133,60 @@ module MethodInterceptors
   end
 end
 
+module PreAndPostConditionsMixin
+  # Lógica para PRE
+  def pre(&precondicion)
+    unless @precondicion.nil?
+      raise "Ya se había definido una precondición!"
+    end
+    @precondicion = precondicion
+    @has_pre_or_postcondition ||= true
+  end
+
+  # Lógica para POST
+  def post(&postcondicion)
+    unless @postcondicion.nil?
+      raise "Ya se había definido una postcondición!"
+    end
+    @postcondicion = postcondicion
+    @has_pre_or_postcondition ||= true
+  end
+
+end
+
+module CloneFactoryMixin
+  # Define getters para parámetros de métodos en la singleton class de la instancia que lo ejecuta
+  def definir_getters_parametros(*args, args_symbols, instancia)
+    args.each_with_index do |arg, index|
+      nombre_param = args_symbols[index].last
+      instancia.define_singleton_method nombre_param do
+        arg
+      end
+    end
+  end
+
+  # Crea una copia de un objeto y le agrega getters que se corresponden con parámetros de métodos
+  def copiar(instance, method_parameters, parametros)
+    # Creación de la instancia
+    copy = instance.class.send(:new, *instance.instance_variable_get(:@params_initialize))
+
+    # Seteo de estado
+    instance.instance_variables.each do |sym_atributo|
+      valor_atributo=instance.instance_variable_get(sym_atributo)
+      copy.instance_variable_set(sym_atributo, valor_atributo)
+    end
+    # Agregado de getters con los parámetros del método
+    definir_getters_parametros(*parametros, method_parameters, copy)
+    copy
+  end
+
+end
+
 class Class
-  include MethodInterceptors
+  include BeforeAndAfterMixin
+  include InvariantsMixin
+  include PreAndPostConditionsMixin
+  include CloneFactoryMixin
+  include MethodInterceptorMixin
 end
 
