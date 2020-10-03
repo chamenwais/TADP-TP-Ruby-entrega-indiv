@@ -89,7 +89,7 @@ module MethodInterceptorMixin
       define_method method_name do |*parametros|
 
         if method_name == :initialize
-          self.instance_variable_set(:@params_initialize , parametros)
+          self.singleton_class.instance_variable_set(:@params_initialize , parametros)
           @@recursing_initialize ||=true
         else
           copia = self.class.copiar(self, unbound_method.parameters, parametros)
@@ -168,7 +168,7 @@ module CloneFactoryMixin
   # Crea una copia de un objeto y le agrega getters que se corresponden con parámetros de métodos
   def copiar(instance, method_parameters, parametros)
     # Creación de la instancia
-    copy = instance.class.send(:new, *instance.instance_variable_get(:@params_initialize))
+    copy = instance.class.send(:new, *instance.singleton_class.instance_variable_get(:@params_initialize))
 
     # Seteo de estado
     instance.instance_variables.each do |sym_atributo|
