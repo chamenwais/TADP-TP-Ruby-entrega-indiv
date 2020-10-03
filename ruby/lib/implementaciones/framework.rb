@@ -71,6 +71,7 @@ module MethodInterceptors
       raise "Ya se había definido una precondición!"
     end
     @precondicion = precondicion
+    @has_pre_or_postcondition ||= true
   end
 
   # Lógica para POST
@@ -79,6 +80,7 @@ module MethodInterceptors
       raise "Ya se había definido una postcondición!"
     end
     @postcondicion = postcondicion
+    @has_pre_or_postcondition ||= true
   end
 
   # Arma un hash con los parámetros enviados en un método (para aplicar en los pre y post)
@@ -103,11 +105,24 @@ module MethodInterceptors
     end
   end
 
+  def copiar(instance)
+
+    instance.
+    # Creacion el objeto
+
+    copy = self.class.new
+    # Seteo de estado
+    # Agregado de getters con los parámetros del método
+  end
+
   # Redefinicion de métodos (común a todos los puntos)
   def method_added(method_name)
     # Se inicializa lista de metodos intereceptados para una clase particular!
     initialize_intercepted_methods
-    if method_name != :method_added && not_intercepted(method_name)
+
+    if method_name != :method_added && not_intercepted(method_name) && (!self.instance_variable_get(:@has_before_and_after).nil? or
+        !self.instance_variable_get(:@has_invariant).nil? or
+        !self.instance_variable_get(:@has_pre_or_postcondition).nil?)
       # Se guarda el metodo como ya interceptado
       @already_intercepted_methods << method_name
       unbound_method = self.instance_method(method_name)
@@ -122,6 +137,11 @@ module MethodInterceptors
         self.class.define_method_missing_for_instance(self)
         key_values = self.class.get_params_dictionary(parametros, unbound_method.parameters)
         self.singleton_class.instance_variable_set(:@method_params, key_values)
+
+        if method_name == :initialize
+          copia = self.class.copiar(self, parametros)
+        end
+
 
         # Validación de precondición si existe
         raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !self.instance_exec(key_values, &precondicion)
@@ -150,6 +170,8 @@ module MethodInterceptors
       end
       @precondicion = nil
       @postcondicion = nil
+    else
+      super method_name
     end
   end
 end
