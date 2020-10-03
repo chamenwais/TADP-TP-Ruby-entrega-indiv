@@ -18,14 +18,14 @@ module MethodInterceptors
     @after_list ||= []
     @before_list << before
     @after_list << after
-    @has_before_and_after = true
+    @has_before_and_after ||= true
   end
 
   # Almacena la condición a cumplir y agrega la clase a una lista de clases que tienen invariantes
   def invariant(&condicion)
     @invariantes ||= []
     @invariantes << condicion
-    @has_invariant = true
+    @has_invariant ||= true
   end
 
   # Chequeo de los invariantes existentes
@@ -105,14 +105,26 @@ module MethodInterceptors
     end
   end
 
-  def copiar(instance)
+  def definir_getters_parametros(*args, args_symbols, instancia)
+    args.each_with_index do |arg, index|
+      nombre_param = args_symbols[index].last
+      instancia.define_singleton_method nombre_param do
+        arg
+      end
+    end
+  end
 
-    instance.
-    # Creacion el objeto
+  def copiar(instance, method_parameters, parametros)
+    copy = instance.class.send(:new,*instance.instance_variable_get(:@params_initialize))
 
-    copy = self.class.new
     # Seteo de estado
+    instance.instance_variables.each do |sym_atributo|
+      valor_atributo=instance.instance_variable_get(sym_atributo)
+      copy.instance_variable_set(sym_atributo,valor_atributo)
+    end
     # Agregado de getters con los parámetros del método
+    definir_getters_parametros(*parametros, method_parameters, copy)
+    copy
   end
 
   # Redefinicion de métodos (común a todos los puntos)
@@ -125,6 +137,7 @@ module MethodInterceptors
         !self.instance_variable_get(:@has_pre_or_postcondition).nil?)
       # Se guarda el metodo como ya interceptado
       @already_intercepted_methods << method_name
+      @@recursing_initialize ||=false
       unbound_method = self.instance_method(method_name)
 
       # Se obtienen la precondicion y postcondicion de turno
@@ -133,18 +146,16 @@ module MethodInterceptors
 
       # Redefinicion del método
       define_method method_name do |*parametros|
-        # Se redefine el method missing de esa instancia (para pre y post)
-        self.class.define_method_missing_for_instance(self)
-        key_values = self.class.get_params_dictionary(parametros, unbound_method.parameters)
-        self.singleton_class.instance_variable_set(:@method_params, key_values)
 
         if method_name == :initialize
-          copia = self.class.copiar(self, parametros)
+          self.instance_variable_set(:@params_initialize , parametros)
+          @@recursing_initialize ||=true
+        else
+          copia = self.class.copiar(self,unbound_method.parameters,parametros)
         end
 
-
         # Validación de precondición si existe
-        raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !self.instance_exec(key_values, &precondicion)
+        raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !copia.instance_eval(&precondicion)
 
         # Ejecución de procs de before si existen
         self.class.call_before_procs if !self.class.instance_variable_get(:@has_before_and_after).nil? && !self.class.is_a_getter?(self,method_name)
@@ -163,8 +174,13 @@ module MethodInterceptors
         # Validación de invariantes si es que existen
         self.class.check_invariants(self) if !self.class.instance_variable_get(:@has_invariant).nil? && !self.class.is_a_getter?(self,method_name)
 
-        # Validación de postcondición si existe
-        raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(self.instance_exec retorno, key_values, &postcondicion)
+        if (!@@recursing_initialize)
+          copia = self.class.copiar(self, unbound_method.parameters,parametros)
+          # Validación de postcondición si existe
+          raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(copia.instance_exec retorno, &postcondicion)
+        else
+          @@recursing_initialize ||=false
+        end
 
         retorno
       end

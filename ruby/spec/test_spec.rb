@@ -67,27 +67,20 @@ describe Guerrero do
     end
     it 'a paolo no le podemos asignar fuerza porque primero chequea invariante de VIDA y vida no tiene valor aun' do
       begin
+        paolo.vida=50
         paolo.fuerza=100
       rescue NoMethodError => error
         error_invariante = error.message
       end
       expect(error_invariante).to eql "undefined method `>=' for nil:NilClass"
     end
-=begin
     it 'el arruinado no puede ni intentar atacar' do
       arruinado.vida=-3
       arruinado.fuerza=0
-      expect {arruinado.atacar(Guerrero.new)}.to raise_error(RuntimeError)
-    end
-    it 'cuando un guerrero lo arruina, ya no puede atacar' do
-      arruinado.vida=5
-      arruinado.fuerza=3
       paolo.vida=50
-      paolo.fuerza=50
-      paolo.atacar(arruinado)
-      expect {arruinado.atacar(Guerrero.new)}.to raise_error(RuntimeError)
+      paolo.fuerza=100
+      expect {arruinado.atacar(paolo)}.to raise_error(RuntimeError)
     end
-=end
   end
 end
 

@@ -53,12 +53,6 @@ class Guerrero
   attr_accessor :vida , :fuerza
   invariant { vida >= 0 }
   invariant { fuerza > 0 && fuerza < 100 }
-  invariant do
-    another=Guerrero.new
-    another.vida=5
-    mi_fuerza=atacar(another)
-    mi_fuerza > 0 && mi_fuerza < 100
-  end
   def atacar(otro)
     otro.vida -= fuerza
     puts "la vida del otro es #{otro.vida}"
