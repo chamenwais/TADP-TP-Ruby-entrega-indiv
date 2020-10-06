@@ -31,7 +31,9 @@ module InvariantsMixin
 
   # Chequeo de los invariantes existentes
   def check_invariants(instance)
+    @from_invariant=true
     if @invariantes.any? { |condicion| !(instance.instance_eval &condicion) }
+      @from_invariant=false
       raise "Hay un invariante que dejó de cumplirse!"
     end
   end
@@ -70,6 +72,9 @@ module MethodInterceptorMixin
       precondicion = @precondicion
       postcondicion = @postcondicion
 
+      # Se inicializa variable para evitar loop de invariantes
+      @from_invariant=false
+
       # Redefinicion del método
       define_method method_name do |*parametros,&bloque|
 
@@ -92,7 +97,9 @@ module MethodInterceptorMixin
         self.class.call_after_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
 
         # Validación de invariantes si es que existen
-        self.class.check_invariants(self) if !self.class.instance_variable_get(:@has_invariant).nil?
+        self.class.check_invariants(self) if !self.class.instance_variable_get(:@has_invariant).nil? and
+            !self.class.instance_variable_get(:@from_invariant)
+        self.class.instance_variable_set(:@from_invariant,false)
 
         copia = self.class.copiar(self, unbound_method.parameters, parametros)
         # Validación de postcondición si existe

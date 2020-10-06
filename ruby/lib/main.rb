@@ -53,6 +53,7 @@ class Guerrero
   attr_accessor :vida , :fuerza
   invariant { vida >= 0 }
   invariant { fuerza > 0 && fuerza < 100 }
+
   def atacar(otro)
     otro.vida -= fuerza
     puts "la vida del otro es #{otro.vida}"
@@ -113,5 +114,24 @@ class Pila
   end
 end
 
+class Cliente
+  attr_accessor :nombre
+  attr_accessor :saldo
+  invariant { saldo >= 0 }
+  invariant do
+    comprar(10)
+    saldo >= 0
+  end
 
+  def initialize(nombre='Senior X',saldo=50)
+    @nombre=nombre
+    @saldo=saldo
+  end
+
+  def comprar(monto)
+    if(@saldo>=monto)
+      @saldo-=monto
+    end
+  end
+end
 
