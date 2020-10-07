@@ -150,3 +150,26 @@ describe Operaciones do
     end
   end
 end
+
+describe Cliente do
+  describe '#Cliente' do
+    it 'deberia fallar porque saldo es menor que 0' do
+
+      begin
+        cliente_pp=Cliente.new("gonza",-20)
+      rescue RuntimeError => re
+        error_pre = re.message
+      end
+      expect(error_pre).to eql "Hay un invariante que dejó de cumplirse!"
+
+    end
+    it 'Debería no poder comprar porque el saldo le querdaría negativo' do
+      begin
+        cliente_ss=Cliente.new("santi",9)
+      rescue RuntimeError => re
+        error_pre = re.message
+      end
+      expect(error_pre).to eql "Hay un invariante que dejó de cumplirse!"
+    end
+  end
+end

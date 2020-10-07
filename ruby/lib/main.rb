@@ -123,15 +123,13 @@ class Cliente
     saldo >= 0
   end
 
-  def initialize(nombre='Senior X',saldo=50)
-    @nombre=nombre
-    @saldo=saldo
+  def initialize(_nombre='Senior X',_saldo=50)
+    @nombre=_nombre
+    @saldo=_saldo
   end
 
   def comprar(monto)
-    if(@saldo>=monto)
-      @saldo-=monto
-    end
+    @saldo-=monto
   end
 end
 
