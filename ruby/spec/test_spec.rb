@@ -68,10 +68,10 @@ describe Guerrero do
     it 'a paolo no le podemos asignar fuerza porque primero chequea invariante de VIDA y vida no tiene valor aun' do
       begin
         paolo.fuerza=100
-      rescue NoMethodError => error
+      rescue RuntimeError => error
         error_invariante = error.message
       end
-      expect(error_invariante).to eql "undefined method `>=' for nil:NilClass"
+      expect(error_invariante).to eql "Falló la ejecución del invariante"
     end
     it 'el arruinado no puede ni intentar atacar' do
       begin
