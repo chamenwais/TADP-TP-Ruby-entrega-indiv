@@ -96,12 +96,13 @@ module MethodInterceptorMixin
         # Ejecución de procs de after si existen
         self.class.call_after_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
 
+        copia = self.class.copiar(self, unbound_method.parameters, parametros)
+
         # Validación de invariantes si es que existen
-        self.class.check_invariants(self) if !self.class.instance_variable_get(:@has_invariant).nil? and
+        self.class.check_invariants(copia) if !self.class.instance_variable_get(:@has_invariant).nil? and
             !self.class.instance_variable_get(:@from_invariant)
         self.class.instance_variable_set(:@from_invariant,false)
 
-        copia = self.class.copiar(self, unbound_method.parameters, parametros)
         # Validación de postcondición si existe
         raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(copia.instance_exec retorno, &postcondicion)
 
