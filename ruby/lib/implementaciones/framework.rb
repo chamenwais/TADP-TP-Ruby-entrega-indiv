@@ -31,9 +31,14 @@ module InvariantsMixin
 
   # Chequeo de los invariantes existentes
   def check_invariants(instance)
-    @from_invariant=true
-    if @invariantes.any? { |condicion| !(instance.instance_eval &condicion) }
-      @from_invariant=false
+    @invariantes ||= []
+    if @invariantes.any? do |condicion|
+      begin
+        !(instance.instance_eval &condicion)
+      rescue
+        raise "Falló la ejecución del invariante"
+      end
+    end
       raise "Hay un invariante que dejó de cumplirse!"
     end
   end
@@ -41,9 +46,12 @@ end
 
 module MethodInterceptorMixin
 
-  # Devuelve si un metodo es setter de una instancia
-  def is_a_setter?(method_name)
-    method_name.to_s[method_name.to_s.length-1].eql? "="
+  def call_original_method(metodo,parametros,bloque,instancia)
+    if !bloque.nil?
+      metodo.bind(instancia).call(*parametros, &bloque)
+    else
+      metodo.bind(instancia).call(*parametros)
+    end
   end
 
   # Inicializa lista de métodos interceptados
@@ -61,9 +69,7 @@ module MethodInterceptorMixin
     # Se inicializa lista de metodos intereceptados para una clase particular!
     initialize_intercepted_methods
 
-    if method_name != :method_added && not_intercepted(method_name) && (!self.instance_variable_get(:@has_before_and_after).nil? or
-        !self.instance_variable_get(:@has_invariant).nil? or
-        !self.instance_variable_get(:@has_pre_or_postcondition).nil? or is_a_setter?(method_name))
+    if method_name != :method_added && not_intercepted(method_name)
       # Se guarda el metodo como ya interceptado
       @already_intercepted_methods << method_name
       unbound_method = self.instance_method(method_name)
@@ -72,41 +78,45 @@ module MethodInterceptorMixin
       precondicion = @precondicion
       postcondicion = @postcondicion
 
-      # Se inicializa variable para evitar loop de invariantes
-      @from_invariant=false
-
       # Redefinicion del método
       define_method method_name do |*parametros,&bloque|
 
-        copia = self.class.copiar(self, unbound_method.parameters, parametros)
-
-        # Validación de precondición si existe
-        raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !copia.instance_eval(&precondicion)
-
-        # Ejecución de procs de before si existen
-        self.class.call_before_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
-
-        # Ejecución de código original, previo a redefinición
-        if !bloque.nil?
-          retorno = unbound_method.bind(self).call(*parametros, &bloque)
+        if self.instance_variable_get(:@validando_contrato)
+          # Ejecución de código original, previo a redefinición
+          self.class.call_original_method(unbound_method,parametros,bloque,self)
         else
-          retorno = unbound_method.bind(self).call(*parametros)
+          # Crea una copia de la instancia
+          copia = self.class.copiar(self, unbound_method.parameters, parametros)
+
+          # Validación de precondición si existe
+          copia.instance_variable_set(:@validando_contrato, true)
+          raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !copia.instance_eval(&precondicion)
+          copia.instance_variable_set(:@validando_contrato, false)
+
+          # Ejecución de procs de before si existen
+          self.class.call_before_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
+
+          # Ejecución de código original, previo a redefinición
+          retorno = self.class.call_original_method(unbound_method,parametros,bloque,self)
+
+          # Ejecución de procs de after si existen
+          self.class.call_after_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
+
+          # Crea una copia de la instancia
+          copia = self.class.copiar(self, unbound_method.parameters, parametros)
+
+          # Validación de invariantes si es que existen
+          copia.instance_variable_set(:@validando_contrato, true)
+          self.class.check_invariants(copia)
+          copia.instance_variable_set(:@validando_contrato, false)
+
+          # Validación de postcondición si existe
+          copia.instance_variable_set(:@validando_contrato, true)
+          raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(copia.instance_exec retorno, &postcondicion)
+          copia.instance_variable_set(:@validando_contrato, false)
+
+          retorno
         end
-
-        # Ejecución de procs de after si existen
-        self.class.call_after_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
-
-        copia = self.class.copiar(self, unbound_method.parameters, parametros)
-
-        # Validación de invariantes si es que existen
-        self.class.check_invariants(copia) if !self.class.instance_variable_get(:@has_invariant).nil? and
-            !self.class.instance_variable_get(:@from_invariant)
-        self.class.instance_variable_set(:@from_invariant,false)
-
-        # Validación de postcondición si existe
-        raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(copia.instance_exec retorno, &postcondicion)
-
-        retorno
       end
       @precondicion = nil
       @postcondicion = nil
@@ -141,9 +151,11 @@ module CloneFactoryMixin
   # Define getters para parámetros de métodos en la singleton class de la instancia que lo ejecuta
   def definir_getters_parametros(*args, args_symbols, instancia)
     args.each_with_index do |arg, index|
-      nombre_param = args_symbols[index].last
-      instancia.define_singleton_method nombre_param do
-        arg
+      nombre_param = args_symbols[index]
+      if !nombre_param.nil?
+        instancia.define_singleton_method nombre_param.last do
+          arg
+        end
       end
     end
   end

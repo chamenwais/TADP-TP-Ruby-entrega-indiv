@@ -50,7 +50,9 @@ class Estudiante
 end
 
 class Guerrero
+
   attr_accessor :vida , :fuerza
+
   invariant { vida >= 0 }
   invariant { fuerza > 0 && fuerza < 100 }
 
@@ -98,9 +100,11 @@ class Pila
   def top
     current_node.element
   end
+  pre { empty?; true }
   def height
     empty? ? 0 : current_node.size
   end
+  pre { height; true }
   def empty?
     current_node.nil?
   end
