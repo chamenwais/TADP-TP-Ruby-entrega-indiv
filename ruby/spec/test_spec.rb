@@ -173,3 +173,17 @@ describe Cliente do
     end
   end
 end
+
+describe Tanque do
+  let(:unTanque) { Tanque.new }
+  let(:otroTanque) { Tanque.new }
+  let(:unEdificio) { Edificio.new }
+  describe '#Tanque' do
+    it 'Debería fallar porque le pase mal los tipos de parametros' do
+      expect{unTanque.atacarEdificio(otroTanque, Misil.new)}.to raise_error(RuntimeException)
+    end
+    it 'Debería andar bien si le paso los parametros correctos' do
+      unTanque.atacarEdificio(unEdificio, Misil.new).to eq(5)
+    end
+  end
+end

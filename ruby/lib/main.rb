@@ -137,3 +137,26 @@ class Cliente
   end
 end
 
+class Edificio
+  def sufriDanio(danio)
+
+  end
+end
+
+class Misil
+  def daño()
+    5
+  end
+end
+
+class Tanque
+  typed({enemigo: Edificio, proyectil: Misil}, Integer)
+  def atacarEdificio(enemigo, proyectil)
+    daño = proyectil.daño
+    enemigo.sufriDanio(daño)
+    daño
+  end
+  def sufriDanio(danio)
+
+  end
+end

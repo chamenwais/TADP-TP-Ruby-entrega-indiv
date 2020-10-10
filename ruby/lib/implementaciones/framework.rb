@@ -1,5 +1,25 @@
 require 'set'
 
+module TypedMixin
+  def typed(mapa, tipoResult)
+    @mapa_tipos_param ||= mapa
+    @tipo_result ||=tipoResult
+  end
+
+  def chequear_parametros(params_symbol, params, mapa)
+    valido||=true
+    params.each_with_index do |parametro, index|
+      puts params_symbol[index].last.to_s
+      valido and parametro.is_a?mapa[params_symbol[index].last]
+    end
+    valido
+  end
+
+  def chequear_retorno(retorno, tipoResult)
+    retorno.is_a?tipoResult
+  end
+end
+
 module BeforeAndAfterMixin
   # Invocacion de los procs de tipo BEFORE
   def call_before_procs
@@ -78,6 +98,9 @@ module MethodInterceptorMixin
       precondicion = @precondicion
       postcondicion = @postcondicion
 
+      mapa_tipos = @mapa_tipos_param
+      tipo_result = @tipo_result
+
       # Redefinicion del método
       define_method method_name do |*parametros,&bloque|
 
@@ -92,6 +115,9 @@ module MethodInterceptorMixin
           copia.instance_variable_set(:@validando_contrato, true)
           raise "No se cumple la precondición para el método #{method_name.to_s}" if !precondicion.nil? && !copia.instance_eval(&precondicion)
           copia.instance_variable_set(:@validando_contrato, false)
+
+          # Validación de tipos de parametros
+          raise "No tenemos los tipos de parametros adecuados en #{method_name.to_s}" if !mapa_tipos.nil? && !self.class.chequear_parametros(unbound_method.parameters, parametros, mapa_tipos)
 
           # Ejecución de procs de before si existen
           self.class.call_before_procs if !self.class.instance_variable_get(:@has_before_and_after).nil?
@@ -115,11 +141,16 @@ module MethodInterceptorMixin
           raise "No se cumple la postcondicion para el método #{method_name.to_s}" if !postcondicion.nil? && !(copia.instance_exec retorno, &postcondicion)
           copia.instance_variable_set(:@validando_contrato, false)
 
+          # Validación de tipos de retorno
+          raise "No tenemos el tipos de retorno adecuados en #{method_name.to_s}" if !tipo_result.nil? && !self.class.chequear_retorno(retorno, tipo_result)
+
           retorno
         end
       end
       @precondicion = nil
       @postcondicion = nil
+      @mapa_tipos_param = nil
+      @tipo_result = nil
     else
       super method_name
     end
@@ -172,6 +203,7 @@ module CloneFactoryMixin
 end
 
 class Class
+  include TypedMixin
   include BeforeAndAfterMixin
   include InvariantsMixin
   include PreAndPostConditionsMixin
