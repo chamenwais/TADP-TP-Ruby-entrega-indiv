@@ -9,8 +9,7 @@ module TypedMixin
   def chequear_parametros(params_symbol, params, mapa)
     valido||=true
     params.each_with_index do |parametro, index|
-      puts params_symbol[index].last.to_s
-      valido and parametro.is_a?mapa[params_symbol[index].last]
+      valido = valido and parametro.is_a?mapa[params_symbol[index].last]
     end
     valido
   end
