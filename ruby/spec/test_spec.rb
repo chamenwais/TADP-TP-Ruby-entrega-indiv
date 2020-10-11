@@ -179,9 +179,17 @@ describe Tanque do
   let(:otroTanque) { Tanque.new }
   let(:unEdificio) { Edificio.new }
   it 'Debería fallar porque le pase mal los tipos de parametros' do
-      expect{unTanque.atacarEdificio(otroTanque, Misil.new)}.to raise_error(RuntimeException)
+      expect{unTanque.atacarEdificio(otroTanque, Misil.new)}.to raise_error(RuntimeError)
   end
   it 'Debería andar bien si le paso los parametros correctos' do
-      unTanque.atacarEdificio(unEdificio, Misil.new).to eq(5)
+    expect(unTanque.atacarEdificio(unEdificio, Misil.new)).to eq(5)
+  end
+  it 'Debería fallar porque el retorno ahora es un string' do
+    class Misil
+      def daño()
+        "5"
+      end
+    end
+    expect{unTanque.atacarEdificio(unEdificio, Misil.new)}.to raise_error(RuntimeError)
   end
 end
